@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monitor Scoreboard TGR</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK (Compatibility Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #00d2ff;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --text-main: #ffffff;
+            --text-sub: #636e72;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #000;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* SCOREBOARD FULLSCREEN CONTAINER */
+        #scoreboard-section {
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            padding: 2vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .scoreboard-panel { 
+            background: #1a1a2e; 
+            color: white; 
+            border-radius: 20px; 
+            padding: 2vw; 
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* HEADER */
+        .scoreboard-header { 
+            display: grid; 
+            grid-template-columns: 1fr auto 1fr; 
+            gap: 20px; 
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1); 
+            padding-bottom: 20px; 
+            margin-bottom: 20px; 
+        }
+        .sb-title-container { text-align: left; }
+        .sb-title { color: var(--secondary-color); font-weight: 700; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 5px; }
+        .sb-match-info { font-size: 1rem; opacity: 0.8; }
+        
+        .athlete-avatar {
+            width: 120px; 
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid var(--secondary-color);
+            box-shadow: 0 0 15px var(--secondary-color);
+            margin: 0 auto;
+        }
+        .athlete-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .sb-athlete-container { text-align: right; }
+        .sb-athlete-name { font-size: 2rem; font-weight: 700; color: #fff; text-transform: uppercase; }
+        .sb-contingent { color: var(--warning); font-weight: 600; font-size: 1.2rem; text-transform: uppercase; }
+        
+        /* MAIN ROW (SCORE & TIMER) */
+        .scoreboard-main-row { 
+            display: grid; 
+            grid-template-columns: 1.5fr 1fr; 
+            gap: 20px; 
+            align-items: center; 
+            margin-bottom: 25px; 
+        }
+        .sb-score-container { 
+            background: rgba(255,255,255,0.05); 
+            border: 3px solid var(--primary-color); 
+            border-radius: 20px; 
+            padding: 20px; 
+            text-align: center; 
+        }
+        .sb-score-label { font-size: 1rem; text-transform: uppercase; color: var(--secondary-color); font-weight: 600; letter-spacing: 2px;}
+        .sb-score-big { 
+            font-size: 8rem; 
+            font-weight: 800; 
+            color: #fff; 
+            text-shadow: 0 0 30px rgba(0,123,255,0.6); 
+            line-height: 1; 
+            font-variant-numeric: tabular-nums; 
+        }
+        
+        .sb-timer { 
+            background: #000; 
+            border-radius: 20px; 
+            padding: 20px; 
+            text-align: center; 
+            border: 2px solid var(--danger); 
+        }
+        .sb-timer-val { 
+            font-size: 6rem; 
+            font-weight: 800; 
+            color: #ffffff; 
+            line-height: 1; 
+            font-family: 'Courier New', Courier, monospace; 
+            font-variant-numeric: tabular-nums;
+            display: inline-block;
+        }
+        .sb-timer-label { font-size: 1rem; color: #fff; opacity: 0.6; letter-spacing: 2px; }
+
+        /* STATS GRID */
+        .sb-stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 15px; 
+            margin-bottom: 25px; 
+        } 
+        .sb-stat-box { 
+            background: rgba(255,255,255,0.08); 
+            padding: 15px; 
+            border-radius: 15px; 
+            text-align: center; 
+            border-bottom: 4px solid var(--primary-color); 
+        }
+        .sb-stat-box.pen { border-bottom-color: var(--danger); }
+        .sb-stat-label { font-size: 0.8rem; text-transform: uppercase; opacity: 0.7; margin-bottom: 5px; display: block; }
+        .sb-stat-val { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+        /* JUDGES GRID */
+        .sb-judges-grid { 
+            display: grid; 
+            grid-template-columns: repeat(10, 1fr); 
+            gap: 10px; 
+        }
+        .sb-judge-card { 
+            background: rgba(255,255,255,0.1); 
+            padding: 10px 5px; 
+            border-radius: 12px; 
+            text-align: center; 
+            border: 1px solid rgba(255,255,255,0.2); 
+            transition: all 0.3s ease; 
+        }
+        .sb-judge-card span { display: block; font-size: 0.7rem; opacity: 0.7; margin-bottom: 5px; }
+        .sb-judge-card strong { font-size: 1.5rem; color: var(--success); font-variant-numeric: tabular-nums; transition: 0.3s;}
+
+        .sb-judge-card.offline { opacity: 0.3; }
+        .sb-judge-card.offline strong { color: #7f8c8d; }
+
+        /* THEMES */
+        #scoreboard-section.theme-merah { background: radial-gradient(circle at center, #3a0a0a 0%, #000000 100%); }
+        #scoreboard-section.theme-merah .scoreboard-panel { background: rgba(231, 76, 60, 0.1); border: 2px solid var(--danger); box-shadow: inset 0 0 50px rgba(231, 76, 60, 0.1); }
+        #scoreboard-section.theme-merah .sb-title { color: var(--danger); }
+        #scoreboard-section.theme-merah .athlete-avatar { border-color: var(--danger); box-shadow: 0 0 20px var(--danger); }
+        #scoreboard-section.theme-merah .sb-score-container { border-color: var(--danger); }
+        #scoreboard-section.theme-merah .sb-score-label { color: var(--danger); }
+        #scoreboard-section.theme-merah .sb-score-big { text-shadow: 0 0 30px rgba(231,76,60,0.6); }
+        #scoreboard-section.theme-merah .sb-stat-box { border-bottom-color: var(--danger); }
+        
+        #scoreboard-section.theme-biru { background: radial-gradient(circle at center, #0a1b3a 0%, #000000 100%); }
+        #scoreboard-section.theme-biru .scoreboard-panel { background: rgba(0, 123, 255, 0.1); border: 2px solid var(--primary-color); box-shadow: inset 0 0 50px rgba(0, 123, 255, 0.1); }
+        #scoreboard-section.theme-biru .athlete-avatar { border-color: var(--primary-color); box-shadow: 0 0 20px var(--primary-color); }
+        #scoreboard-section.theme-biru .sb-stat-box.pen { border-bottom-color: var(--danger); }
+
+        /* COMPARISON SCOREBOARD STYLING */
+        .comp-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 2px solid #333;
+        }
+        .comp-biru {
+            border-color: var(--primary-color);
+            background: linear-gradient(to right, rgba(0,123,255,0.15), transparent);
+        }
+        .comp-merah {
+            border-color: var(--danger);
+            background: linear-gradient(to right, rgba(231,76,60,0.15), transparent);
+        }
+        .comp-header {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 20px;
+        }
+        .comp-avatar img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; }
+        .comp-biru .comp-avatar img { border: 4px solid var(--primary-color); }
+        .comp-merah .comp-avatar img { border: 4px solid var(--danger); }
+
+        .comp-info { flex-grow: 1; text-align: left; }
+        .comp-info h3 { font-size: 2.5rem; margin: 0; color: #fff; text-transform: uppercase; }
+        .comp-info p { font-size: 1.2rem; color: var(--warning); margin: 0; text-transform: uppercase; }
+
+        .comp-score { text-align: right; }
+        .comp-score span { display: block; font-size: 1rem; text-transform: uppercase; opacity: 0.8; }
+        .comp-score strong { font-size: 5rem; font-weight: 800; line-height: 1; color: #fff; font-variant-numeric: tabular-nums; }
+
+        .comp-biru .comp-score strong { color: var(--secondary-color); text-shadow: 0 0 20px rgba(0,123,255,0.5); }
+        .comp-merah .comp-score strong { color: #ff7675; text-shadow: 0 0 20px rgba(231,76,60,0.5); }
+
+        .comp-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            text-align: center;
+        }
+        .comp-stats div { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px; }
+        .comp-stats span { display: block; font-size: 0.9rem; opacity: 0.7; margin-bottom: 5px; text-transform: uppercase; }
+        .comp-stats strong { font-size: 2rem; font-weight: 700; color: #fff; font-family: monospace; font-variant-numeric: tabular-nums; }
+
+        .comp-winner {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--warning);
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(241, 196, 15, 0.1);
+            border: 3px dashed var(--warning);
+            border-radius: 20px;
+            text-transform: uppercase;
+            animation: flashYellow 2s infinite;
+        }
+
+        /* ANIMATIONS */
+        @keyframes flashYellow {
+            0% { background: rgba(255,255,255,0.08); color: white; }
+            20% { background: var(--warning); color: #000; }
+            100% { background: rgba(255,255,255,0.08); color: white; }
+        }
+        .flash-pinalty { animation: flashYellow 1s ease forwards; }
+        .flash-pinalty strong { color: #000 !important; }
+
+        .btn-fullscreen {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 1000;
+            transition: 0.3s;
+        }
+        .btn-fullscreen:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+
+    <button class="btn-fullscreen" onclick="toggleFullscreen()"><i class="fas fa-expand"></i> Fullscreen</button>
+
+    <div id="scoreboard-section">
+        
+        <!-- SINGLE VIEW (DURING MATCH) -->
+        <div class="scoreboard-panel" id="sb-single-view">
+            <div class="scoreboard-header">
+                <div class="sb-title-container">
+                    <div class="sb-title">SCOREBOARD DIGITAL TGR</div>
+                    <div class="sb-match-info">
+                        PARTAI <span id="sb-partai">-</span> | <span id="sb-kategori">-</span>
+                    </div>
+                </div>
+                
+                <div class="athlete-avatar">
+                    <img id="sb-avatar" src="https://iili.io/CShnhS2.png" alt="Avatar">
+                </div>
+
+                <div class="sb-athlete-container">
+                    <div class="sb-athlete-name" id="sb-name">-</div>
+                    <div class="sb-contingent" id="sb-cont">-</div>
+                </div>
+            </div>
+
+            <div class="scoreboard-main-row">
+                <div class="sb-score-container">
+                    <div class="sb-score-label">NILAI AKHIR</div>
+                    <div class="sb-score-big" id="sb-final-score">0.000</div>
+                </div>
+                <div class="sb-timer">
+                    <div class="sb-timer-label">WAKTU</div>
+                    <div class="sb-timer-val timer-shared" id="sb-timer-element">00:00.00</div>
+                </div>
+            </div>
+
+            <div class="sb-stats-grid">
+                <div class="sb-stat-box">
+                    <span class="sb-stat-label">Standar Deviasi</span>
+                    <div class="sb-stat-val" id="sb-stdev">0.000</div>
+                </div>
+                <div class="sb-stat-box">
+                    <span class="sb-stat-label">Avg / Med</span>
+                    <div class="sb-stat-val" id="sb-median">0.00</div>
+                </div>
+                <div class="sb-stat-box pen">
+                    <span class="sb-stat-label">Total Pen. Juri</span>
+                    <div class="sb-stat-val" id="sb-pen-juri">0.00</div>
+                </div>
+                <div class="sb-stat-box pen">
+                    <span class="sb-stat-label">Total Pen. Dewan</span>
+                    <div class="sb-stat-val" id="sb-pen-dewan">0.00</div>
+                </div>
+            </div>
+
+            <div class="sb-judges-grid" id="sb-judges-container">
+                <script>
+                    for(let i=1; i<=10; i++) {
+                        document.write(`
+                            <div class="sb-judge-card offline" id="sb-card-${i}">
+                                <span>JURI ${i}</span>
+                                <strong id="sbj-${i}">9.90</strong>
+                            </div>
+                        `);
+                    }
+                </script>
+            </div>
+        </div>
+
+        <!-- COMPARISON VIEW (MATCH FINISHED) -->
+        <div class="scoreboard-panel" id="sb-comparison-view" style="display: none;">
+            <div class="sb-title" style="text-align: center; margin-bottom: 30px; font-size:2rem;">
+                HASIL PERTANDINGAN - PARTAI <span id="sb-comp-partai"></span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <!-- Kolom Biru -->
+                <div class="comp-box comp-biru">
+                    <div class="comp-header">
+                        <div class="comp-avatar"><img id="comp-biru-img" src="https://iili.io/CShnhS2.png"></div>
+                        <div class="comp-info">
+                            <h3 id="comp-biru-nama">NAMA BIRU</h3>
+                            <p id="comp-biru-kont">KONTINGEN BIRU</p>
+                        </div>
+                        <div class="comp-score">
+                            <span>Nilai Akhir</span>
+                            <strong id="comp-biru-final">0.000</strong>
+                        </div>
+                    </div>
+                    <div class="comp-stats">
+                        <div><span>Waktu</span><strong id="comp-biru-waktu">00:00.00</strong></div>
+                        <div><span>Avg / Med</span><strong id="comp-biru-med">0.00</strong></div>
+                        <div><span>St.Dev</span><strong id="comp-biru-stdev">0.000</strong></div>
+                    </div>
+                </div>
+
+                <!-- Kolom Merah -->
+                <div class="comp-box comp-merah">
+                    <div class="comp-header">
+                        <div class="comp-avatar"><img id="comp-merah-img" src="https://iili.io/CShnhS2.png"></div>
+                        <div class="comp-info">
+                            <h3 id="comp-merah-nama">NAMA MERAH</h3>
+                            <p id="comp-merah-kont">KONTINGEN MERAH</p>
+                        </div>
+                        <div class="comp-score">
+                            <span>Nilai Akhir</span>
+                            <strong id="comp-merah-final">0.000</strong>
+                        </div>
+                    </div>
+                    <div class="comp-stats">
+                        <div><span>Waktu</span><strong id="comp-merah-waktu">00:00.00</strong></div>
+                        <div><span>Avg / Med</span><strong id="comp-merah-med">0.00</strong></div>
+                        <div><span>St.Dev</span><strong id="comp-merah-stdev">0.000</strong></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="comp-winner" id="comp-winner-box">
+                PEMENANG: <strong id="comp-winner-name">-</strong>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Konfigurasi Firebase sesuai data Anda
+        const firebaseConfig = {
+  apiKey: "AIzaSyDZzZ957sLxMLcQQ2v3f3S2G4LbnUOyiyA",
+  authDomain: "tgr-main-silat.firebaseapp.com",
+  databaseURL: "https://tgr-main-silat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tgr-main-silat",
+  storageBucket: "tgr-main-silat.firebasestorage.app",
+  messagingSenderId: "1099485902483",
+  appId: "1:1099485902483:web:5dc50a8e3d86eeef6abf66"
+};
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // State Variables
+        let globalMatchData = [];
+        let globalRekapData = [];
+        let activeMatchInfo = { partai: 0, side: '', name: '', cont: '', kategori: '', img: '' };
+        let juriStatusData = {};
+        
+        let globalStDev = 0;
+        let globalMedian = 0;
+        let penaltyDewan = 0;
+        let finalScoreValue = 0;
+        let prevPinaltyStates = {};
+
+        // Timer Variables
+        let startTime;
+        let elapsedTime = 0;
+        let timerInterval;
+
+        // Listener Firebase Realtime
+        db.ref('matches').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                globalMatchData = Object.keys(data).map(key => ({ partai: key, ...data[key] }));
+            } else {
+                globalMatchData = [];
+            }
+            updateScoreboardView();
+        });
+
+        db.ref('rekap').on('value', (snapshot) => {
+            const data = snapshot.val();
+            globalRekapData = data ? Object.keys(data).map(key => ({id: key, ...data[key]})) : [];
+            updateScoreboardView();
+        });
+
+        db.ref('activeMatch').on('value', (snapshot) => {
+            const val = snapshot.val();
+            if(val) {
+                activeMatchInfo = val;
+                updateScoreboardView();
+            }
+        });
+
+        db.ref('juriStatus').on('value', (snapshot) => {
+            juriStatusData = snapshot.val() || {};
+            updateJuriStatusInScoreboard();
+            
+            // Recalculate scores purely to update average based on active judges
+            db.ref('scores').once('value', (snap) => {
+                calculateGlobalScores(snap.val());
+            });
+        });
+
+        db.ref('scores').on('value', (snapshot) => {
+            calculateGlobalScores(snapshot.val());
+        });
+
+        db.ref('timer').on('value', (snapshot) => {
+            const val = snapshot.val();
+            if(val) {
+                elapsedTime = val.elapsedTime;
+                updateTimerDisplays(elapsedTime);
+                
+                if(val.isRunning) {
+                    if(!timerInterval) {
+                        startTime = Date.now() - elapsedTime;
+                        timerInterval = setInterval(() => {
+                            elapsedTime = Date.now() - startTime;
+                            updateTimerDisplays(elapsedTime);
+                        }, 10);
+                    }
+                } else {
+                    if(timerInterval) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                    }
+                }
+            }
+        });
+
+        // Function Timer
+        function updateTimerDisplays(time) {
+            let mins = Math.floor(time / 60000);
+            let secs = Math.floor((time % 60000) / 1000);
+            let ms = Math.floor((time % 1000) / 10);
+            let formatted = (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs) + "." + (ms < 10 ? "0" + ms : ms);
+            
+            document.querySelectorAll('.timer-shared').forEach(el => { 
+                el.innerText = formatted; 
+            });
+        }
+
+        // Function Hitung Nilai & Flash Pinalty Juri
+        function calculateGlobalScores(scores) {
+            if(!scores) return;
+            
+            let totalJuriPen = 0;
+            let juriValuesForAvg = [];
+            let allJuriValues = [];
+
+            for(let i=1; i<=10; i++) {
+                let s = scores['juri'+i] || { score: 9.90, penalty: 0, stamina: 0, jurus: 1 };
+                const sbjEl = document.getElementById('sbj-'+i);
+                
+                if(sbjEl) sbjEl.innerText = s.score.toFixed(2);
+
+                // Efek kedip kuning saat ada potongan nilai dari juri
+                if (prevPinaltyStates[i] !== undefined && s.penalty > prevPinaltyStates[i]) {
+                    const card = document.getElementById('sb-card-'+i);
+                    if(card) {
+                        card.classList.remove('flash-pinalty');
+                        void card.offsetWidth; // trigger reflow
+                        card.classList.add('flash-pinalty');
+                        setTimeout(() => { card.classList.remove('flash-pinalty'); }, 1000);
+                    }
+                }
+                prevPinaltyStates[i] = s.penalty;
+
+                totalJuriPen += s.penalty;
+                allJuriValues.push(s.score);
+
+                // Hanya hitung rata-rata dari juri yang sedang online
+                if(juriStatusData['juri'+i] === true) {
+                    juriValuesForAvg.push(s.score);
+                }
+            }
+
+            let averageScore = 0;
+            if(juriValuesForAvg.length > 0) {
+                averageScore = juriValuesForAvg.reduce((a,b) => a+b, 0) / juriValuesForAvg.length;
+            }
+
+            // St.Dev dan Median murni untuk statistik (diambil dari semua 10 juri)
+            const sorted = [...allJuriValues].sort((a,b) => a-b);
+            globalMedian = (sorted[4] + sorted[5]) / 2;
+            const meanFull = allJuriValues.reduce((a,b) => a+b, 0) / 10;
+            globalStDev = Math.sqrt(allJuriValues.map(x => Math.pow(x - meanFull, 2)).reduce((a,b) => a+b, 0) / 10);
+            
+            document.getElementById('sb-median').innerText = averageScore.toFixed(2);
+            document.getElementById('sb-stdev').innerText = globalStDev.toFixed(3);
+            document.getElementById('sb-pen-juri').innerText = totalJuriPen.toFixed(2);
+
+            penaltyDewan = scores.dewanPenalty || 0;
+            document.getElementById('sb-pen-dewan').innerText = penaltyDewan.toFixed(2);
+
+            finalScoreValue = averageScore - penaltyDewan; 
+            document.getElementById('sb-final-score').innerText = finalScoreValue.toFixed(3);
+        }
+
+        // Update indikator Juri Online/Offline
+        function updateJuriStatusInScoreboard() {
+            for(let i=1; i<=10; i++) {
+                const card = document.getElementById('sb-card-'+i);
+                if(card) {
+                    const isOnline = juriStatusData['juri'+i] === true;
+                    if(isOnline) card.classList.remove('offline');
+                    else card.classList.add('offline');
+                }
+            }
+        }
+
+        // Logic pergantian view Single & Comparison
+        function updateScoreboardView() {
+            const info = activeMatchInfo;
+            if(!info || !info.partai) return;
+
+            const match = globalMatchData.find(m => m.partai == info.partai);
+            const sbSingle = document.getElementById('sb-single-view');
+            const sbComp = document.getElementById('sb-comparison-view');
+            const sbSection = document.getElementById('scoreboard-section');
+
+            // Jika kedua sudut statusnya 'finish', tampilkan layar perbandingan
+            if (match && match.redStatus === 'finish' && match.blueStatus === 'finish') {
+                if(sbSingle) sbSingle.style.display = 'none';
+                if(sbComp) sbComp.style.display = 'block';
+
+                const recaps = globalRekapData.filter(r => r.partai == info.partai);
+                const rMerah = recaps.find(r => r.name === match.namaMerah) || {};
+                const rBiru = recaps.find(r => r.name === match.namaBiru) || {};
+
+                document.getElementById('sb-comp-partai').innerText = info.partai;
+
+                // Set Data Sudut Biru
+                document.getElementById('comp-biru-img').src = match.imgBiru || 'https://iili.io/CShnhS2.png';
+                document.getElementById('comp-biru-nama').innerText = match.namaBiru || '-';
+                document.getElementById('comp-biru-kont').innerText = match.kontBiru || '-';
+                document.getElementById('comp-biru-final').innerText = typeof rBiru.final === 'number' ? rBiru.final.toFixed(3) : (rBiru.final || '0.000');
+                document.getElementById('comp-biru-waktu').innerText = rBiru.waktu || '00:00.00';
+                document.getElementById('comp-biru-med').innerText = rBiru.median ? rBiru.median.toFixed(2) : '0.00';
+                document.getElementById('comp-biru-stdev').innerText = rBiru.stdev ? rBiru.stdev.toFixed(3) : '0.000';
+
+                // Set Data Sudut Merah
+                document.getElementById('comp-merah-img').src = match.imgMerah || 'https://iili.io/CShnhS2.png';
+                document.getElementById('comp-merah-nama').innerText = match.namaMerah || '-';
+                document.getElementById('comp-merah-kont').innerText = match.kontMerah || '-';
+                document.getElementById('comp-merah-final').innerText = typeof rMerah.final === 'number' ? rMerah.final.toFixed(3) : (rMerah.final || '0.000');
+                document.getElementById('comp-merah-waktu').innerText = rMerah.waktu || '00:00.00';
+                document.getElementById('comp-merah-med').innerText = rMerah.median ? rMerah.median.toFixed(2) : '0.00';
+                document.getElementById('comp-merah-stdev').innerText = rMerah.stdev ? rMerah.stdev.toFixed(3) : '0.000';
+
+                // Hitung Pemenang
+                const scoreB = typeof rBiru.final === 'number' ? rBiru.final : -999;
+                const scoreM = typeof rMerah.final === 'number' ? rMerah.final : -999;
+
+                let winnerName = "-";
+                const winnerBox = document.getElementById('comp-winner-box');
+
+                if(scoreB > scoreM) {
+                    winnerName = match.namaBiru;
+                    winnerBox.style.color = "var(--secondary-color)";
+                    winnerBox.style.borderColor = "var(--primary-color)";
+                } else if(scoreM > scoreB) {
+                    winnerName = match.namaMerah;
+                    winnerBox.style.color = "#ff7675";
+                    winnerBox.style.borderColor = "var(--danger)";
+                } else {
+                    // Tie-breaker 1: Nilai hukuman lebih rendah
+                    const penB = rBiru.penalty || rBiru.totalPenalty || 0;
+                    const penM = rMerah.penalty || rMerah.totalPenalty || 0;
+                    
+                    if(penB < penM) { 
+                        winnerName = match.namaBiru; 
+                        winnerBox.style.color = "var(--secondary-color)"; 
+                        winnerBox.style.borderColor = "var(--primary-color)";
+                    } else if(penM < penB) { 
+                        winnerName = match.namaMerah; 
+                        winnerBox.style.color = "#ff7675"; 
+                        winnerBox.style.borderColor = "var(--danger)";
+                    } else {
+                        // Tie-breaker 2: Waktu terdekat dengan 3 menit
+                        const timeB = rBiru.timerMs || 9999999;
+                        const timeM = rMerah.timerMs || 9999999;
+                        const standardTime = 180000; 
+                        const diffB = Math.abs(timeB - standardTime);
+                        const diffM = Math.abs(timeM - standardTime);
+                        
+                        if(diffB < diffM) { 
+                            winnerName = match.namaBiru; 
+                            winnerBox.style.color = "var(--secondary-color)"; 
+                            winnerBox.style.borderColor = "var(--primary-color)";
+                        } else if(diffM < diffB) { 
+                            winnerName = match.namaMerah; 
+                            winnerBox.style.color = "#ff7675"; 
+                            winnerBox.style.borderColor = "var(--danger)";
+                        } else { 
+                            // Tie-breaker 3: Standar Deviasi paling rendah
+                            const stdevB = rBiru.stdev || 0;
+                            const stdevM = rMerah.stdev || 0;
+                            if(stdevB < stdevM) { 
+                                winnerName = match.namaBiru; 
+                                winnerBox.style.color = "var(--secondary-color)"; 
+                                winnerBox.style.borderColor = "var(--primary-color)";
+                            } else if(stdevM < stdevB) { 
+                                winnerName = match.namaMerah; 
+                                winnerBox.style.color = "#ff7675"; 
+                                winnerBox.style.borderColor = "var(--danger)";
+                            } else {
+                                winnerName = "DRAW"; 
+                                winnerBox.style.color = "var(--warning)"; 
+                                winnerBox.style.borderColor = "var(--warning)";
+                            }
+                        }
+                    }
+                }
+                document.getElementById('comp-winner-name').innerText = winnerName;
+                if(sbSection) sbSection.classList.remove('theme-merah', 'theme-biru');
+
+            } else {
+                // Tampilan Single saat pertandingan berlangsung
+                if(sbSingle) sbSingle.style.display = 'block';
+                if(sbComp) sbComp.style.display = 'none';
+
+                const ketUpper = (info.kategori || '').toUpperCase();
+                const avatarImg = info.img || 'https://iili.io/CShnhS2.png';
+                
+                document.getElementById('sb-partai').innerText = info.partai;
+                document.getElementById('sb-kategori').innerText = ketUpper;
+                document.getElementById('sb-name').innerText = (info.name || '').toUpperCase();
+                document.getElementById('sb-cont').innerText = (info.cont || '').toUpperCase();
+                document.getElementById('sb-avatar').src = avatarImg;
+
+                if(sbSection) {
+                    sbSection.classList.remove('theme-merah', 'theme-biru');
+                    if (info.side === 'merah') {
+                        sbSection.classList.add('theme-merah');
+                    } else if (info.side === 'biru') {
+                        sbSection.classList.add('theme-biru');
+                    }
+                }
+            }
+        }
+
+        // Toggle Fullscreen Layar
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
